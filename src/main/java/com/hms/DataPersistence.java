@@ -10,7 +10,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
-
 public class DataPersistence {
 
     private static final String DATA_DIR = System.getProperty("user.home")
@@ -143,6 +142,8 @@ public class DataPersistence {
             return false;
         }
     }
+
     public static String getDataDir() { return DATA_DIR; }
+
     private static void ensureDir() { new File(DATA_DIR).mkdirs(); }
 }

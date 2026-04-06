@@ -10,6 +10,7 @@ public class BookingManager {
     public synchronized Pair<Boolean, String> bookRoom(Customer customer) {
         Room target = findRoom(customer.getRoomNumber());
         if (target == null) return new Pair<>(false, "Room not found.");
+
         while (!target.isAvailable()) {
             try {
                 wait();
@@ -54,11 +55,11 @@ public class BookingManager {
     }
 
     public synchronized boolean removeRoom(int roomNumber) {
-        Iterator<Room> it = rooms.iterator(); // Week 8: Iterator
+        Iterator<Room> it = rooms.iterator();
         while (it.hasNext()) {
             Room r = it.next();
             if (r.getRoomNumber() == roomNumber) {
-                if (!r.isAvailable()) return false; // occupied
+                if (!r.isAvailable()) return false;
                 it.remove();
                 logs.add(new LogEntry("ROOM-DELETED", "—", roomNumber, "Removed from inventory"));
                 return true;
@@ -67,16 +68,12 @@ public class BookingManager {
         return false;
     }
 
-    // ── Queries ──────────────────────────────────────────────────────
-
-    /** Week 8: Collections.sort() — sorted by room number */
     public synchronized ArrayList<Room> getRoomsSortedByNumber() {
         ArrayList<Room> copy = new ArrayList<>(rooms);
         copy.sort(Comparator.comparingInt(Room::getRoomNumber));
         return copy;
     }
 
-    /** Week 8: Collections.sort() — sorted by price */
     public synchronized ArrayList<Room> getRoomsSortedByPrice() {
         ArrayList<Room> copy = new ArrayList<>(rooms);
         copy.sort(Comparator.comparingDouble(Room::getPrice));
@@ -100,7 +97,7 @@ public class BookingManager {
     }
 
     public synchronized Customer getCustomerByRoom(int roomNumber) {
-        return bookings.get(roomNumber); // Week 8: HashMap.get()
+        return bookings.get(roomNumber);
     }
 
     private Room findRoom(int roomNumber) {
@@ -114,13 +111,11 @@ public class BookingManager {
     public synchronized long occupiedCount() { return rooms.stream().filter(r -> !r.isAvailable()).count(); }
     public synchronized long availableCount(){ return rooms.stream().filter(Room::isAvailable).count(); }
 
-    /** Week 7: bounded generic — compute revenue using PriceCalculator */
     public synchronized double computeRevenue() {
         double total = 0;
         for (LogEntry e : logs) {
             if (!"CHECK-OUT".equals(e.getType())) continue;
             try {
-                // Extract numeric value from details string (e.g. "₹54000.00 total | 3 night(s)")
                 String det = e.getDetails();
                 String numStr = det.replaceAll("[^0-9.]", "").split("\\.")[0]
                         + "." + det.replaceAll("[^0-9.]", "").split("\\.")[1];
@@ -130,13 +125,10 @@ public class BookingManager {
         return total;
     }
 
-    /** Add a log entry externally (e.g. from persistence layer). */
     public synchronized void addLog(LogEntry entry) { logs.add(entry); }
 
-    /** Bulk-load rooms from persistence without triggering extra logs. */
     public synchronized void loadRoom(Room r) { rooms.add(r); }
 
-    /** Bulk-load a booking from persistence. */
     public synchronized void loadBooking(Customer c) {
         Room target = findRoom(c.getRoomNumber());
         if (target != null) target.setAvailable(false);

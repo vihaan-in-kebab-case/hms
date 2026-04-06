@@ -1,23 +1,53 @@
 package com.hms;
-
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
-import javafx.collections.*;
-import javafx.collections.transformation.FilteredList;
-import javafx.geometry.*;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
-import javafx.stage.Stage;
-
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-public class HMSApplication extends Application {
 
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+/**
+ * HMS Main Application
+ *
+ * Concepts demonstrated per lab week:
+ *  Week 2  — RoomType enum (ComboBox populated from enum values)
+ *  Week 3  — ServiceThreads.BillGenerationThread (Runnable), AutoSaveThread (Thread)
+ *  Week 4  — BookingManager synchronized methods; wait()/notify() on concurrent booking
+ *  Week 5  — DataPersistence: FileWriter log append, FileReader log read, byte-stream copy
+ *  Week 6  — DataPersistence: ObjectOutputStream/ObjectInputStream for rooms & bookings
+ *  Week 7  — Pair<T,U> generic class; PriceCalculator<T extends Number>
+ *  Week 8  — ObservableList wraps ArrayList; Collections.sort via BookingManager
+ *  Week 9  — JavaFX: TabPane, TableView, GridPane, ComboBox, event handling, CSS
+ */
+public class HMSApplication extends Application {
     private final BookingManager manager = new BookingManager();
 
     private final ObservableList<Room>     roomObs     = FXCollections.observableArrayList();
@@ -40,10 +70,10 @@ public class HMSApplication extends Application {
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         tabs.getTabs().addAll(
-                new Tab("⌂  Dashboard",    buildDashboard()),
-                new Tab("🚪  Rooms",        buildRoomManagement()),
-                new Tab("📋  Booking",      buildBookingSystem()),
-                new Tab("📜  Activity Log", buildLogTab())
+                new Tab("Dashboard",    buildDashboard()),
+                new Tab("Rooms",        buildRoomManagement()),
+                new Tab("Booking",      buildBookingSystem()),
+                new Tab("Activity Log", buildLogTab())
         );
 
         Scene scene = new Scene(tabs, 1080, 720);
@@ -102,21 +132,6 @@ public class HMSApplication extends Application {
         occRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(occBar, Priority.ALWAYS);
 
-        Button syncDemo = new Button("▶  Demo Concurrent Booking (Week 3 & 4)");
-        syncDemo.getStyleClass().addAll("btn", "btn-secondary");
-        TextArea demoOutput = new TextArea();
-        demoOutput.setEditable(false);
-        demoOutput.setMaxHeight(80);
-        demoOutput.getStyleClass().add("demo-area");
-
-        syncDemo.setOnAction(e -> {
-            if (roomObs.isEmpty()) { demoOutput.setText("Add rooms first."); return; }
-            int roomNo = roomObs.get(0).getRoomNumber();
-            demoOutput.clear();
-            ServiceThreads.demoConcurrentBooking(manager, roomNo,
-                    msg -> demoOutput.appendText(msg + "\n"));
-        });
-
         Label recentLbl = label("Recent Activity", "section-label");
         TableView<LogEntry> recentTable = buildLogTable();
         recentTable.setItems(logObs);
@@ -125,8 +140,6 @@ public class HMSApplication extends Application {
         VBox layout = new VBox(8,
                 title, subtitle, cards,
                 label("Occupancy Rate", "section-label"), occRow,
-                label("Week 3 & 4 — Multithreading & Synchronization Demo", "section-label"),
-                syncDemo, demoOutput,
                 recentLbl, recentTable);
         layout.setPadding(new Insets(24));
         layout.getStyleClass().add("tab-content");
@@ -162,9 +175,9 @@ public class HMSApplication extends Application {
         TextField search = field("🔍  Search rooms...");
         search.getStyleClass().add("search-field");
 
-        Button addBtn    = btn("➕  Add Room",      "btn-primary");
-        Button deleteBtn = btn("🗑  Delete Selected","btn-danger");
-        Button toggleBtn = btn("👁  Available Only", "btn-secondary");
+        Button addBtn    = btn("Add Room",      "btn-primary");
+        Button deleteBtn = btn("Delete Selected","btn-danger");
+        Button toggleBtn = btn("Available Only", "btn-secondary");
 
         TableView<Room> table = new TableView<>();
         table.getStyleClass().add("data-table");
@@ -194,20 +207,20 @@ public class HMSApplication extends Application {
         });
 
         addBtn.setOnAction(e -> {
-            if (roomNum.getText().isEmpty() || typeBox.getValue() == null) {
-                toast("⚠  Room number and type required."); return;
-            }
-            int num;
-            try { num = Integer.parseInt(roomNum.getText()); }
-            catch (NumberFormatException ex) { toast("⚠  Room number must be numeric."); return; }
+            java.util.List<String> errs = Validator.validateNewRoom(roomNum.getText(), typeBox.getValue());
+            if (!errs.isEmpty()) { toast("⚠  " + Validator.format(errs)); return; }
+
+            int num = Integer.parseInt(roomNum.getText().trim());
 
             Room r = new Room(num, typeBox.getValue());
-            if (!manager.addRoom(r)) { toast("⚠  Room " + num + " already exists."); return; }
+            if (!manager.addRoom(r)) {
+                toast("⚠  Room " + num + " already exists. Choose a different number."); return;
+            }
 
             refreshObservables();
             DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
             roomNum.clear(); typeBox.setValue(null); tariffHint.setText("");
-            toast("✅  Room " + num + " added.");
+            toast("Room " + num + " (" + r.getRoomType() + ") added successfully.");
         });
 
         deleteBtn.setOnAction(e -> {
@@ -218,12 +231,12 @@ public class HMSApplication extends Application {
             }
             refreshObservables();
             DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
-            toast("🗑  Room " + sel.getRoomNumber() + " deleted.");
+            toast("Room " + sel.getRoomNumber() + " deleted.");
         });
 
         toggleBtn.setOnAction(e -> {
             showAvailableOnly = !showAvailableOnly;
-            toggleBtn.setText(showAvailableOnly ? "👁  Show All Rooms" : "👁  Available Only");
+            toggleBtn.setText(showAvailableOnly ? "Show All Rooms" : "Available Only");
             applyRoomFilter(filtered, search.getText(), showAvailableOnly);
         });
 
@@ -257,7 +270,8 @@ public class HMSApplication extends Application {
         availTable.getColumns().addAll(
                 col("Room","roomNumber",70), col("Type","roomType",110), col("₹/Night","price",100));
         availTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        availTable.setMaxHeight(170);
+        availTable.setMinHeight(160);
+        availTable.setPrefHeight(220);
         availTable.setOnMouseClicked(e -> {
             Room sel = availTable.getSelectionModel().getSelectedItem();
             if (sel != null) roomSelector.setValue(sel.getRoomNumber());
@@ -270,26 +284,37 @@ public class HMSApplication extends Application {
                 col("Room","roomNumber",70), col("Type","roomType",100),
                 col("Check-In","checkInTime",160));
         bookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
         bookBtn.setOnAction(e -> {
-            if (nameF.getText().isEmpty() || contactF.getText().isEmpty()
-                    || roomSelector.getValue() == null) {
-                toast("⚠  Please fill all fields and select a room."); return;
-            }
+            java.util.List<String> errs = Validator.validateBooking(
+                    nameF.getText(), contactF.getText(),
+                    roomSelector.getValue(), manager.totalRooms());
+            if (!errs.isEmpty()) { toast("⚠  " + Validator.format(errs)); return; }
+
             int roomNo = roomSelector.getValue();
+            boolean stillAvailable = manager.getAvailableRooms()
+                    .stream().anyMatch(r -> r.getRoomNumber() == roomNo);
+            if (!stillAvailable) {
+                toast("⚠  Room " + roomNo + " was just booked by someone else.\n"
+                    + "Please select another available room.");
+                updateRoomDropdown();
+                roomSelector.setValue(null);
+                return;
+            }
+
             String rt = ""; double price = 0;
             for (Room r : manager.getRoomsSortedByNumber()) {
                 if (r.getRoomNumber() == roomNo) { rt = r.getRoomType(); price = r.getPrice(); break; }
             }
-            Customer c = new Customer(nameF.getText(), contactF.getText(), roomNo, rt, price);
+            Customer c = new Customer(nameF.getText().trim(), contactF.getText().trim(),
+                                      roomNo, rt, price);
 
             Pair<Boolean,String> result = manager.bookRoom(c);
             if (result.getFirst()) {
                 DataPersistence.appendLog(manager.getLogs().get(manager.getLogs().size()-1));
-                DataPersistence.saveBookings(manager.getAllCustomers());                       
+                DataPersistence.saveBookings(manager.getAllCustomers());
                 refreshObservables();
                 nameF.clear(); contactF.clear(); roomSelector.setValue(null);
-                toast("✅  " + result.getSecond());
+                toast(result.getSecond());
             } else {
                 toast("⚠  " + result.getSecond());
             }
@@ -297,13 +322,19 @@ public class HMSApplication extends Application {
 
         checkoutBtn.setOnAction(e -> {
             Customer sel = bookTable.getSelectionModel().getSelectedItem();
-            if (sel == null) { toast("⚠  Select a booking from the table to checkout."); return; }
+
+            java.util.List<String> credErrs = Validator.validateCheckout(
+                    nameF.getText(), contactF.getText(), sel);
+            if (!credErrs.isEmpty()) { toast("⚠  " + Validator.format(credErrs)); return; }
+
+            java.util.List<String> discErrs = Validator.validateDiscount(discountF.getText());
+            if (!discErrs.isEmpty()) { toast("⚠  " + Validator.format(discErrs)); return; }
 
             long nights = ChronoUnit.DAYS.between(sel.getCheckInDateTime(), LocalDateTime.now());
             if (nights < 1) nights = 1;
 
             double disc = 0;
-            try { disc = Double.parseDouble(discountF.getText()); } catch (Exception ignored) {}
+            try { disc = Double.parseDouble(discountF.getText().trim()); } catch (Exception ignored) {}
             PriceCalculator<Double> calc = new PriceCalculator<>(sel.getPricePerNight(), disc);
             double total = calc.priceWithTax((int) nights);
 
@@ -314,7 +345,6 @@ public class HMSApplication extends Application {
 
             String dir = System.getProperty("user.home") + File.separator + "HMS_Bills";
             new File(dir).mkdirs();
-            final long fNights = nights;
             ServiceThreads.BillGenerationThread.start(sel, dir,
                 path -> {
                     DataPersistence.appendLog(manager.getLogs().get(manager.getLogs().size()-1));
@@ -339,7 +369,7 @@ public class HMSApplication extends Application {
                 err -> toast("⚠  Bill error: " + err)
             );
 
-            discountF.clear();
+            nameF.clear(); contactF.clear(); discountF.clear();
         });
 
         GridPane form = formGrid(
@@ -347,10 +377,17 @@ public class HMSApplication extends Application {
                 "Contact",      contactF,
                 "Discount %",   discountF,
                 "Room No",      roomSelector);
+
+        Label checkoutHint = new Label(
+                "ℹ  To checkout: select a row in the bookings table, then enter the "
+              + "exact guest name and contact to confirm identity.");
+        checkoutHint.getStyleClass().add("hint-label");
+        checkoutHint.setWrapText(true);
+
         HBox actions = new HBox(12, bookBtn, checkoutBtn);
 
         VBox layout = new VBox(10,
-                title, form, actions,
+                title, form, actions, checkoutHint,
                 label("Available Rooms  (click to select)", "section-label"), availTable,
                 label("Current Bookings  (select to checkout)", "section-label"), bookTable);
         layout.setPadding(new Insets(24));
@@ -362,11 +399,11 @@ public class HMSApplication extends Application {
     private VBox buildLogTab() {
         Label title = label("Activity Log", "page-title");
 
-        TextField search = field("🔍  Search logs...");
+        TextField search = field("Search logs...");
         search.getStyleClass().add("search-field");
 
-        Button clearBtn  = btn("🗑  Clear", "btn-danger");
-        Button exportBtn = btn("📤  Export Copy", "btn-secondary");
+        Button clearBtn  = btn("Clear", "btn-danger");
+        Button exportBtn = btn("Export Copy", "btn-secondary");
 
         FilteredList<LogEntry> filtered = new FilteredList<>(logObs, e -> true);
         search.textProperty().addListener((o, ov, nv) -> filtered.setPredicate(log -> {
@@ -389,7 +426,7 @@ public class HMSApplication extends Application {
                     + File.separator + "activity_export.log";
             new File(System.getProperty("user.home") + File.separator + "HMS_Bills").mkdirs();
             boolean ok = DataPersistence.exportLogCopy(dest);
-            toast(ok ? "✅  Log exported to:\n" + dest : "⚠  No log file to export yet.");
+            toast(ok ? "Log exported to:\n" + dest : "⚠  No log file to export yet.");
         });
 
         TableView<LogEntry> table = buildLogTable();

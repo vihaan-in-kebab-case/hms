@@ -1,6 +1,5 @@
 package com.hms;
 public class PriceCalculator<T extends Number> {
-
     private T basePrice;
     private T discount;
 

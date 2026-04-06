@@ -124,6 +124,7 @@ public class ServiceThreads {
         Runnable attempt = () -> {
             String threadName = Thread.currentThread().getName();
             Customer fake = new Customer(threadName, "demo", roomNumber, "Demo", 0);
+
             boolean roomFree = manager.getAvailableRooms()
                     .stream().anyMatch(r -> r.getRoomNumber() == roomNumber);
 

@@ -1,18 +1,21 @@
 package com.hms;
-
-import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.font.*;
-import com.itextpdf.kernel.pdf.*;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.*;
-import com.itextpdf.layout.properties.*;
-import com.itextpdf.io.font.constants.StandardFonts;
-
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
 
 public class BillGenerator {
 
@@ -102,6 +105,7 @@ public class BillGenerator {
         addTotalRow(totals, regular, bold, "TOTAL AMOUNT DUE", "₹" + String.format("%.2f", grandTotal), true);
 
         doc.add(totals);
+
         doc.add(new Paragraph("Thank you for staying with us. We hope to see you again!")
                 .setFont(regular).setFontSize(10).setFontColor(GRAY)
                 .setTextAlignment(TextAlignment.CENTER));

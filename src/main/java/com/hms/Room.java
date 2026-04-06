@@ -1,8 +1,13 @@
 package com.hms;
-import javafx.beans.property.*;
-
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 public class Room {
-
     private final IntegerProperty roomNumber = new SimpleIntegerProperty();
     private final StringProperty  roomType   = new SimpleStringProperty();
     private final DoubleProperty  price      = new SimpleDoubleProperty();

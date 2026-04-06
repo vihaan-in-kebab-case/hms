@@ -1,14 +1,8 @@
-/* ═══════════════════════════════════════════════════════════════
-   HMS — Hotel Management System  |  Dark Luxury Theme
-   Palette: Deep Navy · Slate · Gold Accent · Crisp White
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── Variables ─────────────────────────────────────────────────── */
 .root {
-    -color-bg:         #0F1729;
-    -color-surface:    #1A2540;
-    -color-surface2:   #22304F;
-    -color-border:     #2E3F62;
+    -color-bg:         #050811;
+    -color-surface:    #0d1a3d;
+    -color-surface2:   #041740;
+    -color-border:     #0c1a35;
     -color-gold:       #D4AF37;
     -color-gold-light: #E8CC6A;
     -color-text:       #E2E8F0;
@@ -23,7 +17,6 @@
     -fx-font-size: 13px;
 }
 
-/* ── Main tab pane ──────────────────────────────────────────────── */
 .tab-pane {
     -fx-background-color: -color-bg;
     -fx-tab-min-height: 42px;
@@ -64,11 +57,10 @@
     -fx-font-weight: 700;
 }
 
-.tab:hover:!selected .tab-label {
+.tab:hover:not(:selected) .tab-label {
     -fx-text-fill: -color-text;
 }
 
-/* ── Tab content area ──────────────────────────────────────────── */
 .tab-content {
     -fx-background-color: -color-bg;
 }
@@ -78,7 +70,6 @@
     -fx-padding: 0;
 }
 
-/* ── Page typography ───────────────────────────────────────────── */
 .page-title {
     -fx-text-fill: -color-text;
     -fx-font-size: 22px;
@@ -106,7 +97,6 @@
     -fx-font-weight: 600;
 }
 
-/* ── Stat Cards ────────────────────────────────────────────────── */
 .stat-card {
     -fx-background-radius: 10;
     -fx-border-radius: 10;
@@ -132,7 +122,6 @@
     -fx-font-weight: 600;
 }
 
-/* ── Occupancy bar ─────────────────────────────────────────────── */
 .occ-bar {
     -fx-pref-height: 10;
     -fx-accent: -color-gold;
@@ -153,7 +142,6 @@
     -fx-alignment: center-right;
 }
 
-/* ── Data Tables ───────────────────────────────────────────────── */
 .data-table {
     -fx-background-color: -color-surface;
     -fx-border-color: -color-border;
@@ -207,7 +195,6 @@
     -fx-background-color: rgba(255,255,255,0.04);
 }
 
-/* Status badges */
 .status-available {
     -fx-background-color: rgba(46,204,113,0.15);
     -fx-text-fill: #2ECC71;
@@ -224,7 +211,6 @@
     -fx-font-weight: 600;
 }
 
-/* Log event type badges */
 .log-checkin {
     -fx-background-color: rgba(46,204,113,0.15);
     -fx-text-fill: #2ECC71;
@@ -257,7 +243,6 @@
     -fx-font-size: 11px;
 }
 
-/* Scrollbar */
 .data-table .scroll-bar {
     -fx-background-color: transparent;
 }
@@ -277,7 +262,6 @@
     -fx-padding: 0;
 }
 
-/* ── Buttons ───────────────────────────────────────────────────── */
 .btn {
     -fx-background-radius: 6;
     -fx-border-radius: 6;
@@ -332,7 +316,6 @@
     -fx-text-fill: white;
 }
 
-/* ── Form fields ───────────────────────────────────────────────── */
 .hms-field, .text-field {
     -fx-background-color: -color-surface2;
     -fx-border-color: -color-border;
@@ -356,7 +339,6 @@
     -fx-pref-width: 260;
 }
 
-/* ── ComboBox ──────────────────────────────────────────────────── */
 .combo-box, .combo {
     -fx-background-color: -color-surface2;
     -fx-border-color: -color-border;
@@ -407,7 +389,6 @@
     -fx-text-fill: -color-gold;
 }
 
-/* ── Alerts / Dialogs ──────────────────────────────────────────── */
 .dialog-pane {
     -fx-background-color: -color-surface;
     -fx-border-color: -color-border;
@@ -442,7 +423,6 @@
     -fx-text-fill: #0F1729;
 }
 
-/* ── Misc ───────────────────────────────────────────────────────── */
 .label {
     -fx-text-fill: -color-text;
 }
