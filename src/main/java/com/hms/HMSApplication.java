@@ -49,38 +49,57 @@ import javafx.stage.Stage;
  *  Week 9  — JavaFX: TabPane, TableView, GridPane, ComboBox, event handling, CSS
  */
 public class HMSApplication extends Application {
+
+    // ── Core shared-resource (Week 4 sync) ──────────────────────────
     private final BookingManager manager = new BookingManager();
 
+    // ── JavaFX observable wrappers of BookingManager collections ─────
     private final ObservableList<Room>     roomObs     = FXCollections.observableArrayList();
     private final ObservableList<Customer> customerObs = FXCollections.observableArrayList();
     private final ObservableList<LogEntry> logObs      = FXCollections.observableArrayList();
+
+    // ── Background threads (Week 3) ──────────────────────────────────
     private ServiceThreads.AutoSaveThread autoSaveThread;
+
+    // ── Dashboard labels ─────────────────────────────────────────────
     private Label statTotal, statOccupied, statAvailable, statRevenue;
+
+    // ── Room selector for booking tab ────────────────────────────────
     private final ComboBox<Integer> roomSelector = new ComboBox<>();
+
     private boolean showAvailableOnly = false;
 
+    // ════════════════════════════════════════════════════════════════
+    //  START
+    // ════════════════════════════════════════════════════════════════
     @Override
     public void start(Stage stage) {
+        new LoginManager(stage, () -> launchMainApp(stage)).show();
+    }
+
+    private void launchMainApp(Stage stage) {
         loadPersistedData();
+        seedDemoIfEmpty();
+
         TabPane tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         tabs.getTabs().addAll(
-                new Tab("Dashboard",    buildDashboard()),
-                new Tab("Rooms",        buildRoomManagement()),
-                new Tab("Booking",      buildBookingSystem()),
-                new Tab("Activity Log", buildLogTab())
+                new Tab("\u2302  Dashboard",    buildDashboard()),
+                new Tab("\uD83D\uDEAA  Rooms",        buildRoomManagement()),
+                new Tab("\uD83D\uDCCB  Booking",      buildBookingSystem()),
+                new Tab("\uD83D\uDCDC  Activity Log", buildLogTab())
         );
 
         Scene scene = new Scene(tabs, 1080, 720);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
 
-        stage.setTitle("HMS — Hotel Management System");
+        stage.setTitle("HMS \u2014 Hotel Management System");
         stage.setScene(scene);
         stage.setMinWidth(900);
         stage.setMinHeight(600);
         stage.setOnCloseRequest(e -> shutdown());
-        stage.show();
+
         autoSaveThread = new ServiceThreads.AutoSaveThread(manager);
         autoSaveThread.start();
 
@@ -89,7 +108,10 @@ public class HMSApplication extends Application {
 
         refreshObservables();
     }
-    
+
+    // ════════════════════════════════════════════════════════════════
+    //  DASHBOARD
+    // ════════════════════════════════════════════════════════════════
     private VBox buildDashboard() {
         Label title    = label("Admin Dashboard", "page-title");
         Label subtitle = label("Live overview — data persists across sessions", "page-subtitle");
@@ -106,6 +128,7 @@ public class HMSApplication extends Application {
                 statCard("Revenue (GST)", statRevenue,  "stat-card-gold")
         );
 
+        // Occupancy bar
         ProgressBar occBar = new ProgressBar(0);
         occBar.getStyleClass().add("occ-bar");
         occBar.setMaxWidth(Double.MAX_VALUE);
@@ -127,6 +150,7 @@ public class HMSApplication extends Application {
         occRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(occBar, Priority.ALWAYS);
 
+        // Recent activity table
         Label recentLbl = label("Recent Activity", "section-label");
         TableView<LogEntry> recentTable = buildLogTable();
         recentTable.setItems(logObs);
@@ -153,15 +177,20 @@ public class HMSApplication extends Application {
         return card;
     }
 
+    // ════════════════════════════════════════════════════════════════
+    //  ROOM MANAGEMENT
+    // ════════════════════════════════════════════════════════════════
     private VBox buildRoomManagement() {
         Label title = label("Room Management", "page-title");
 
         TextField roomNum = field("e.g. 101");
+        // Week 2: ComboBox populated from RoomType enum values
         ComboBox<RoomType> typeBox = new ComboBox<>();
         typeBox.getItems().addAll(RoomType.values());
         typeBox.setPromptText("Room type");
         typeBox.getStyleClass().add("combo");
 
+        // Week 8: sort options
         ComboBox<String> sortBox = new ComboBox<>();
         sortBox.getItems().addAll("Sort by Room No", "Sort by Price");
         sortBox.setValue("Sort by Room No");
@@ -170,10 +199,11 @@ public class HMSApplication extends Application {
         TextField search = field("🔍  Search rooms...");
         search.getStyleClass().add("search-field");
 
-        Button addBtn    = btn("Add Room",      "btn-primary");
-        Button deleteBtn = btn("Delete Selected","btn-danger");
-        Button toggleBtn = btn("Available Only", "btn-secondary");
+        Button addBtn    = btn("➕  Add Room",      "btn-primary");
+        Button deleteBtn = btn("🗑  Delete Selected","btn-danger");
+        Button toggleBtn = btn("👁  Available Only", "btn-secondary");
 
+        // Table — bound to roomObs (Week 8: ObservableList)
         TableView<Room> table = new TableView<>();
         table.getStyleClass().add("data-table");
         FilteredList<Room> filtered = new FilteredList<>(roomObs, p -> true);
@@ -183,6 +213,7 @@ public class HMSApplication extends Application {
                 col("₹/Night","price",110),     statusCol());
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        // Live search filter
         search.textProperty().addListener((o, ov, nv) -> applyRoomFilter(filtered, nv, showAvailableOnly));
         sortBox.setOnAction(e -> {
             ArrayList<Room> sorted = sortBox.getValue().contains("Price")
@@ -191,6 +222,7 @@ public class HMSApplication extends Application {
             roomObs.setAll(sorted);
         });
 
+        // Week 7: price label showing enum tariff
         Label tariffHint = new Label();
         tariffHint.getStyleClass().add("form-label");
         typeBox.setOnAction(e -> {
@@ -201,21 +233,28 @@ public class HMSApplication extends Application {
                     + "  |  with GST: ₹" + String.format("%.2f", rt.calculateCostWithTax(3)));
         });
 
+        // Add room
         addBtn.setOnAction(e -> {
+            // ── Edge-case validation (Validator) ──────────────────────
             java.util.List<String> errs = Validator.validateNewRoom(roomNum.getText(), typeBox.getValue());
             if (!errs.isEmpty()) { toast("⚠  " + Validator.format(errs)); return; }
 
             int num = Integer.parseInt(roomNum.getText().trim());
+
+            // Week 2: use enum to create room with correct base tariff
             Room r = new Room(num, typeBox.getValue());
             if (!manager.addRoom(r)) {
+                // Duplicate room number
                 toast("⚠  Room " + num + " already exists. Choose a different number."); return;
             }
+
             refreshObservables();
-            DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
+            DataPersistence.saveRooms(manager.getRoomsSortedByNumber()); // Week 6
             roomNum.clear(); typeBox.setValue(null); tariffHint.setText("");
-            toast("Room " + num + " (" + r.getRoomType() + ") added successfully.");
+            toast("✅  Room " + num + " (" + r.getRoomType() + ") added successfully.");
         });
 
+        // Delete room
         deleteBtn.setOnAction(e -> {
             Room sel = table.getSelectionModel().getSelectedItem();
             if (sel == null) { toast("⚠  Select a room first."); return; }
@@ -224,12 +263,13 @@ public class HMSApplication extends Application {
             }
             refreshObservables();
             DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
-            toast("Room " + sel.getRoomNumber() + " deleted.");
+            toast("🗑  Room " + sel.getRoomNumber() + " deleted.");
         });
 
+        // Toggle filter
         toggleBtn.setOnAction(e -> {
             showAvailableOnly = !showAvailableOnly;
-            toggleBtn.setText(showAvailableOnly ? "Show All Rooms" : "Available Only");
+            toggleBtn.setText(showAvailableOnly ? "👁  Show All Rooms" : "👁  Available Only");
             applyRoomFilter(filtered, search.getText(), showAvailableOnly);
         });
 
@@ -244,16 +284,23 @@ public class HMSApplication extends Application {
         return layout;
     }
 
+    // ════════════════════════════════════════════════════════════════
+    //  BOOKING & CHECKOUT
+    // ════════════════════════════════════════════════════════════════
     private VBox buildBookingSystem() {
         Label title = label("Booking & Checkout", "page-title");
 
         TextField nameF     = field("Guest full name");
         TextField contactF  = field("Phone / Email");
         TextField discountF = field("Discount % (0–100)");
+
+        // ── Nights spinner ────────────────────────────────────────────
         Spinner<Integer> nightsSpinner = new Spinner<>(1, 365, 1);
         nightsSpinner.setEditable(true);
         nightsSpinner.getStyleClass().add("hms-field");
         nightsSpinner.setPrefWidth(100);
+
+        // ── Amenity checkboxes ────────────────────────────────────────
         CheckBox cbBreakfast = new CheckBox("Breakfast  (+₹350/night)");
         CheckBox cbWifi      = new CheckBox("Wi-Fi  (+₹199 flat)");
         CheckBox cbCab       = new CheckBox("Cab Service  (+₹750/trip)");
@@ -270,19 +317,20 @@ public class HMSApplication extends Application {
         Button bookBtn     = btn("✔  Book Room",   "btn-primary");
         Button checkoutBtn = btn("↩  Checkout",    "btn-danger");
 
+        // Available rooms mini-table (click to select)
         FilteredList<Room> avail = new FilteredList<>(roomObs, Room::isAvailable);
         TableView<Room> availTable = new TableView<>(avail);
         availTable.getStyleClass().add("data-table");
         availTable.getColumns().addAll(
                 col("Room","roomNumber",70), col("Type","roomType",110), col("₹/Night","price",100));
         availTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        availTable.setMinHeight(160);
-        availTable.setPrefHeight(220);
+        availTable.setMinHeight(120);
         availTable.setOnMouseClicked(e -> {
             Room sel = availTable.getSelectionModel().getSelectedItem();
             if (sel != null) roomSelector.setValue(sel.getRoomNumber());
         });
 
+        // Bookings table
         TableView<Customer> bookTable = new TableView<>(customerObs);
         bookTable.getStyleClass().add("data-table");
         bookTable.getColumns().addAll(
@@ -291,7 +339,9 @@ public class HMSApplication extends Application {
                 col("Check-In","checkInTime",160));
         bookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        // Book — runs booking through synchronized BookingManager (Week 4)
         bookBtn.setOnAction(e -> {
+            // ── Edge-case validation ──────────────────────────────────
             java.util.List<String> errs = Validator.validateBooking(
                     nameF.getText(), contactF.getText(),
                     roomSelector.getValue(), manager.totalRooms());
@@ -299,16 +349,18 @@ public class HMSApplication extends Application {
 
             int roomNo = roomSelector.getValue();
 
+            // Guard: room selector could be stale if another booking just happened
             boolean stillAvailable = manager.getAvailableRooms()
                     .stream().anyMatch(r -> r.getRoomNumber() == roomNo);
             if (!stillAvailable) {
                 toast("⚠  Room " + roomNo + " was just booked by someone else.\n"
                     + "Please select another available room.");
-                updateRoomDropdown();
+                updateRoomDropdown();   // refresh dropdown immediately
                 roomSelector.setValue(null);
                 return;
             }
-            
+
+            // Find room type/price for Customer object
             String rt = ""; double price = 0;
             for (Room r : manager.getRoomsSortedByNumber()) {
                 if (r.getRoomNumber() == roomNo) { rt = r.getRoomType(); price = r.getPrice(); break; }
@@ -316,13 +368,14 @@ public class HMSApplication extends Application {
             Customer c = new Customer(nameF.getText().trim(), contactF.getText().trim(),
                                       roomNo, rt, price);
 
+            // Week 4: synchronized bookRoom (wait/notify inside)
             Pair<Boolean,String> result = manager.bookRoom(c);
             if (result.getFirst()) {
-                DataPersistence.appendLog(manager.getLogs().get(manager.getLogs().size()-1));
-                DataPersistence.saveBookings(manager.getAllCustomers());                       
+                DataPersistence.appendLog(manager.getLogs().get(manager.getLogs().size()-1)); // Week 5
+                DataPersistence.saveBookings(manager.getAllCustomers());                       // Week 6
                 refreshObservables();
                 nameF.clear(); contactF.clear(); roomSelector.setValue(null);
-                toast(result.getSecond());
+                toast("✅  " + result.getSecond());
             } else {
                 toast("⚠  " + result.getSecond());
             }
@@ -419,13 +472,25 @@ public class HMSApplication extends Application {
 
         HBox actions = new HBox(12, bookBtn, checkoutBtn);
 
-        VBox layout = new VBox(10,
-                title, form, amenitiesLabel, amenitiesBox, actions, checkoutHint,
+        // ── Left column: form + controls ──────────────────────────────
+        VBox leftCol = new VBox(10, form, amenitiesLabel, amenitiesBox, actions, checkoutHint);
+        leftCol.setPrefWidth(360);
+        leftCol.setMinWidth(320);
+
+        // ── Right column: both tables stacked ─────────────────────────
+        VBox rightCol = new VBox(8,
                 label("Available Rooms  (click to select)", "section-label"), availTable,
                 label("Current Bookings  (select to checkout)", "section-label"), bookTable);
+        VBox.setVgrow(bookTable, Priority.ALWAYS);
+        HBox.setHgrow(rightCol, Priority.ALWAYS);
+
+        HBox body = new HBox(20, leftCol, rightCol);
+        HBox.setHgrow(rightCol, Priority.ALWAYS);
+
+        VBox layout = new VBox(10, title, body);
         layout.setPadding(new Insets(24));
         layout.getStyleClass().add("tab-content");
-        VBox.setVgrow(bookTable, Priority.ALWAYS);
+        VBox.setVgrow(body, Priority.ALWAYS);
         return layout;
     }
 
@@ -542,9 +607,21 @@ public class HMSApplication extends Application {
         });
     }
 
+    // Week 6: load serialized data on startup
     private void loadPersistedData() {
         for (Room r : DataPersistence.loadRooms())       manager.loadRoom(r);
         for (Customer c : DataPersistence.loadBookings()) manager.loadBooking(c);
+    }
+
+    private void seedDemoIfEmpty() {
+        if (manager.totalRooms() > 0) return;
+        // Week 2: constructing rooms via RoomType enum
+        manager.addRoom(new Room(101, RoomType.SINGLE));
+        manager.addRoom(new Room(102, RoomType.DOUBLE));
+        manager.addRoom(new Room(201, RoomType.DELUXE));
+        manager.addRoom(new Room(202, RoomType.SUITE));
+        manager.addRoom(new Room(301, RoomType.PENTHOUSE));
+        DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
     }
 
     private void shutdown() {
