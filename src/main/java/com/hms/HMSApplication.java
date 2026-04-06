@@ -63,8 +63,6 @@ public class HMSApplication extends Application {
     private boolean showAvailableOnly = false;
     @Override
     public void start(Stage stage) {
-        loadPersistedData();
-        seedDemoIfEmpty();
 
         TabPane tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
@@ -500,21 +498,6 @@ public class HMSApplication extends Application {
                     || r.getRoomType().toLowerCase().contains(low)
                     || r.getStatus().toLowerCase().contains(low));
         });
-    }
-
-    private void loadPersistedData() {
-        for (Room r : DataPersistence.loadRooms())       manager.loadRoom(r);
-        for (Customer c : DataPersistence.loadBookings()) manager.loadBooking(c);
-    }
-
-    private void seedDemoIfEmpty() {
-        if (manager.totalRooms() > 0) return;
-        manager.addRoom(new Room(101, RoomType.SINGLE));
-        manager.addRoom(new Room(102, RoomType.DOUBLE));
-        manager.addRoom(new Room(201, RoomType.DELUXE));
-        manager.addRoom(new Room(202, RoomType.SUITE));
-        manager.addRoom(new Room(301, RoomType.PENTHOUSE));
-        DataPersistence.saveRooms(manager.getRoomsSortedByNumber());
     }
 
     private void shutdown() {
